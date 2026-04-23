@@ -29,7 +29,7 @@
     <div class="grid">
         <div class="card">
             <i class="fas fa-thermometer-half" style="color: #e74c3c;"></i>
-            <div class="label">Temperatura</div>
+            <div class="label">Temperatura DHT11</div>
             <div id="temp" class="value">-- °C</div>
         </div>
         <div class="card">
@@ -47,37 +47,61 @@
             <div class="label">Lluvia Total</div>
             <div id="lluvia" class="value">-- mm</div>
         </div>
+        <div class="card">
+            <i class="fas fa-mountain" style="color: #8e44ad;"></i>
+            <div class="label">Altitud</div>
+            <div id="altitud" class="value">-- m</div>
+        </div>
+        <div class="card">
+            <i class="fas fa-thermometer-full" style="color: #e67e22;"></i>
+            <div class="label">Temperatura BMP280</div>
+            <div id="temp_bmp" class="value">-- °C</div>
+        </div>
     </div>
 
     <div class="chart-container">
-        <h3>Historial de Temperatura (Últimas lecturas)</h3>
+        <h3>Historial de Temperatura DHT11 (Últimas 10 lecturas)</h3>
         <canvas id="graficaTemp"></canvas>
     </div>
 </div>
 
 <script>
-    // --- TU CONFIGURACIÓN DE FIREBASE ---
     const firebaseConfig = {
-        apiKey: "AizaSyCrN4oE7ypM0VNkrlp6sO_Hx7PPrx8gZvA",
+        apiKey: "AIzaSyCrN4oE7ypM0VNkrlp6sO_Hx7PPrx8gZvA",  // AIza correcto
         databaseURL: "https://estacionmeteorologicaiot-default-rtdb.firebaseio.com"
     };
 
-    // Inicializar Firebase
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // --- LÓGICA DE TIEMPO REAL ---
-    database.ref('Estacion').on('value', (snapshot) => {
+    // Tiempo real DHT11
+    database.ref('/sensores/dht11/tiempo_real').on('value', (snapshot) => {
         const data = snapshot.val();
-        if(data) {
-            document.getElementById('temp').innerText = data.Temperatura.toFixed(1) + " °C";
-            document.getElementById('hum').innerText = data.Humedad.toFixed(1) + " %";
-            document.getElementById('pres').innerText = data.Presion.toFixed(0) + " hPa";
-            document.getElementById('lluvia').innerText = data.Lluvia.toFixed(2) + " mm";
+        if (data) {
+            document.getElementById('temp').innerText = data.temperatura.toFixed(1) + " °C";
+            document.getElementById('hum').innerText  = data.humedad.toFixed(1) + " %";
         }
     });
 
-    // --- LÓGICA DE LA GRÁFICA ---
+    // Tiempo real BMP280
+    database.ref('/sensores/bmp280/tiempo_real').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            document.getElementById('pres').innerText     = data.presion.toFixed(0) + " hPa";
+            document.getElementById('altitud').innerText  = data.altitud.toFixed(1) + " m";
+            document.getElementById('temp_bmp').innerText = data.temperatura.toFixed(1) + " °C";
+        }
+    });
+
+    // Tiempo real Pluviómetro
+    database.ref('/sensores/pluviometro/tiempo_real').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            document.getElementById('lluvia').innerText = data.lluvia_total.toFixed(2) + " mm";
+        }
+    });
+
+    // Gráfica con historial DHT11
     const ctx = document.getElementById('graficaTemp').getContext('2d');
     const chart = new Chart(ctx, {
         type: 'line',
@@ -95,16 +119,14 @@
         options: { responsive: true, scales: { y: { beginAtZero: false } } }
     });
 
-    // Leer los últimos 10 puntos del historial
-    database.ref('Historial').limitToLast(10).on('value', (snapshot) => {
+    database.ref('/sensores/dht11/historial').limitToLast(10).on('value', (snapshot) => {
         const labels = [];
         const values = [];
         snapshot.forEach((child) => {
             const d = child.val();
-            // Convertir timestamp a hora local
-            const time = new Date(d.fecha * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const time = new Date(d.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             labels.push(time);
-            values.push(d.temp);
+            values.push(d.temperatura);
         });
         chart.data.labels = labels;
         chart.data.datasets[0].data = values;
