@@ -3,96 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Estación IoT Realtime</title>
-    
+    <title>Estación Meteorológica IoT</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f4f8; text-align: center; padding: 20px; }
-        h1 { color: #1a73e8; margin-bottom: 30px; }
-        
-        .container { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
-        
-        .card { 
-            background: white; 
-            padding: 25px; 
-            border-radius: 20px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-            width: 240px; 
-            transition: 0.3s;
-        }
-        .card:hover { transform: translateY(-10px); }
-        
-        .icon { font-size: 3.5em; margin-bottom: 15px; }
-        .temp-icon { color: #ea4335; }
-        .hum-icon { color: #4285f4; }
-        .pres-icon { color: #34a853; }
-
-        .value { font-size: 2.8em; font-weight: bold; color: #333; }
-        .label { color: #5f6368; font-weight: 600; text-transform: uppercase; font-size: 0.9em; }
-        .unit { font-size: 0.4em; vertical-align: middle; color: #777; }
-        
-        #status { margin-top: 40px; font-weight: bold; color: #34a853; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 900px; margin: auto; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card i { font-size: 2rem; color: #3498db; margin-bottom: 10px; }
+        .value { font-size: 1.5rem; font-weight: bold; color: #2c3e50; }
+        .label { color: #7f8c8d; font-size: 0.9rem; }
+        .chart-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px; }
+        h1 { color: #2c3e50; }
     </style>
 </head>
 <body>
 
-    <h1><i class="fas fa-microchip"></i> Panel de Control IoT</h1>
+<div class="container">
+    <h1><i class="fa-solid fa-cloud-sun-rain"></i> Mi Estación Meteorológica</h1>
     
-    <div class="container">
+    <div class="grid">
         <div class="card">
-            <div class="icon temp-icon"><i class="fas fa-thermometer-half"></i></div>
+            <i class="fas fa-thermometer-half" style="color: #e74c3c;"></i>
             <div class="label">Temperatura</div>
-            <div class="value"><span id="temp">--</span><span class="unit">°C</span></div>
+            <div id="temp" class="value">-- °C</div>
         </div>
-
         <div class="card">
-            <div class="icon hum-icon"><i class="fas fa-droplet"></i></div>
+            <i class="fas fa-tint" style="color: #3498db;"></i>
             <div class="label">Humedad</div>
-            <div class="value"><span id="hum">--</span><span class="unit">%</span></div>
+            <div id="hum" class="value">-- %</div>
         </div>
-
         <div class="card">
-            <div class="icon pres-icon"><i class="fas fa-gauge-simple-high"></i></div>
+            <i class="fas fa-compress-arrows-alt" style="color: #27ae60;"></i>
             <div class="label">Presión</div>
-            <div class="value"><span id="pres">--</span></div>
-            <div style="font-size: 0.8em; color: #777;">hPa (Hectopascales)</div>
+            <div id="pres" class="value">-- hPa</div>
+        </div>
+        <div class="card">
+            <i class="fas fa-cloud-showers-heavy" style="color: #f1c40f;"></i>
+            <div class="label">Lluvia Total</div>
+            <div id="lluvia" class="value">-- mm</div>
         </div>
     </div>
 
-    <p id="status"><i class="fas fa-link"></i> Conectado a Firebase Realtime</p>
+    <div class="chart-container">
+        <h3>Historial de Temperatura (Últimas lecturas)</h3>
+        <canvas id="graficaTemp"></canvas>
+    </div>
+</div>
 
-    <script>
-        // ESTOS SON TUS DATOS REALES DE TU CAPTURA DE PANTALLA
-        const firebaseConfig = {
-            apiKey: "AizaSyCrN4oE7ypM0VNkrlp6sO_Hx7PPrx8gZvA",
-            authDomain: "estacionmeteorologicaiot.firebaseapp.com",
-            databaseURL: "https://estacionmeteorologicaiot-default-rtdb.firebaseio.com",
-            projectId: "estacionmeteorologicaiot",
-            storageBucket: "estacionmeteorologicaiot.firebasestorage.app",
-            messagingSenderId: "458403379108",
-            appId: "1:458403379108:web:310f6c0c2bd9d22153f331"
-        };
+<script>
+    // --- TU CONFIGURACIÓN DE FIREBASE ---
+    const firebaseConfig = {
+        apiKey: "AizaSyCrN4oE7ypM0VNkrlp6sO_Hx7PPrx8gZvA",
+        databaseURL: "https://estacionmeteorologicaiot-default-rtdb.firebaseio.com"
+    };
 
-        // Inicializar
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-        // Escuchar cambios en la carpeta "Estacion"
-        db.ref('Estacion').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if(data) {
-                // Actualizamos los números en pantalla
-                document.getElementById('temp').innerText = data.Temperatura || '--';
-                document.getElementById('hum').innerText = data.Humedad || '--';
-                document.getElementById('pres').innerText = data.Presion || '--';
-                
-                console.log("Datos actualizados desde la nube");
-            }
+    // --- LÓGICA DE TIEMPO REAL ---
+    database.ref('Estacion').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if(data) {
+            document.getElementById('temp').innerText = data.Temperatura.toFixed(1) + " °C";
+            document.getElementById('hum').innerText = data.Humedad.toFixed(1) + " %";
+            document.getElementById('pres').innerText = data.Presion.toFixed(0) + " hPa";
+            document.getElementById('lluvia').innerText = data.Lluvia.toFixed(2) + " mm";
+        }
+    });
+
+    // --- LÓGICA DE LA GRÁFICA ---
+    const ctx = document.getElementById('graficaTemp').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Temperatura °C',
+                data: [],
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: false } } }
+    });
+
+    // Leer los últimos 10 puntos del historial
+    database.ref('Historial').limitToLast(10).on('value', (snapshot) => {
+        const labels = [];
+        const values = [];
+        snapshot.forEach((child) => {
+            const d = child.val();
+            // Convertir timestamp a hora local
+            const time = new Date(d.fecha * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            labels.push(time);
+            values.push(d.temp);
         });
-    </script>
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = values;
+        chart.update();
+    });
+</script>
+
 </body>
 </html>
